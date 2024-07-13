@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:great_places/screens/map_screen.dart';
+import 'package:great_places/utils/location_util.dart';
 import 'package:location/location.dart';
 
 class LocationInput extends StatefulWidget {
-  const LocationInput({super.key});
+  const LocationInput({
+    super.key,
+    required this.onSelectPosition,
+  });
+
+  final Function onSelectPosition;
 
   @override
   State<LocationInput> createState() => _LocationInputState();
@@ -11,8 +19,41 @@ class LocationInput extends StatefulWidget {
 class _LocationInputState extends State<LocationInput> {
   String? _previewImageUrl;
 
+  void _showPreview(double lat, double long) {
+    final staticMapImageUrl = LocationUtil.generateLocationPreviewImage(
+      latitude: lat,
+      longitude: long,
+    );
+
+    setState(() {
+      _previewImageUrl = staticMapImageUrl;
+    });
+  }
+
   Future<void> _getCurrentuserLocation() async {
-    final locData = await Location().getLocation();
+    try {
+      final locData = await Location().getLocation();
+      _showPreview(locData.latitude ?? 0.0, locData.longitude ?? 0.0);
+      widget.onSelectPosition(
+          LatLng(locData.latitude ?? 0.0, locData.longitude ?? 0.0));
+    } catch (e) {
+      return;
+    }
+  }
+
+  Future<void> _selectOnMap() async {
+    final LatLng? selectPosition = await Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (ctx) => const MapScreen(),
+      ),
+    );
+
+    if (selectPosition == null) return;
+
+    _showPreview(selectPosition.latitude, selectPosition.longitude);
+
+    widget.onSelectPosition(selectPosition);
   }
 
   @override
@@ -45,7 +86,7 @@ class _LocationInputState extends State<LocationInput> {
             TextButton.icon(
               icon: const Icon(Icons.map),
               label: const Text('Select on Map'),
-              onPressed: () {},
+              onPressed: _selectOnMap,
             ),
           ],
         ),
